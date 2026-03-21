@@ -74,20 +74,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    msg = await update.message.reply_text("📸 تم استلام الصورة... جاري الفحص عبر مساحة الـ Cloud...")
+    msg = await update.message.reply_text("📸 تم استلام الصورة... جاري الفحص عبر الذكاء الاصطناعي...")
     photo = update.message.photo[-1] # أعلى دقة
     
+    file_path = f"tmp_{photo.file_id}.jpg"
     try:
-        # الحصول على رابط الصورة من سيرفرات تيليجرام
+        # تنزيل الصورة مؤقتاً
         file = await context.bot.get_file(photo.file_id)
-        file_path = file.file_path
+        await file.download_to_drive(file_path)
         
-        # إرسال الرابط إلى خدمة OCR السحابية (مجانية وسريعة)
-        api_url = f"https://api.ocr.space/parse/imageurl?apikey=helloworld&url={file_path}&language=eng"
-        response = requests.get(api_url).json()
+        # إرسال الصورة مباشرة للمحرك
+        api_url = "https://api.ocr.space/parse/image"
+        payload = {'apikey': 'K82110196288957', 'language': 'eng'}
+        with open(file_path, 'rb') as f:
+            response = requests.post(api_url, data=payload, files={'image': f}).json()
         
         if response.get("IsErroredOnProcessing"):
-            await msg.edit_text("❌ لم أتمكن من قراءة الصورة بوضوح. أرسل صورة أوضح.")
+            err = response.get("ErrorMessage", ["Unknown"])[0]
+            await msg.edit_text(f"❌ فشل الفحص من الخادم السحابي.\\nالسبب: {err}")
             return
             
         text = ""
@@ -95,7 +99,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             text += result.get("ParsedText", "") + " "
             
         if len(text.strip()) < 5:
-            await msg.edit_text("⚠️ لم يتم التعرف على أي نص! حاول التقاط الصورة من مسافة أقرب.")
+            await msg.edit_text("⚠️ لم يتم التعرف على النص بدقة!\\nتأكد أن الصورة واضحة وليست مظلمة أو مهزوزة.")
             return
             
         analysis = analyze(text)
@@ -103,6 +107,9 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         
     except Exception as e:
         await msg.edit_text(f"❌ خطأ أثناء الفحص: {e}")
+    finally:
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     document = update.message.document
