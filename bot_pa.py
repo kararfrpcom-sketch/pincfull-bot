@@ -1,6 +1,7 @@
 import os
 import logging
 import re
+import requests
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -8,7 +9,6 @@ BOT_TOKEN = "8786102103:AAGiwHNQHid3nWjUgxV0TvYja4tpCAjf8FM"
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# قاعدة بيانات الأعطال الكاملة (30+ كود)
 PANIC_DATABASE = {
     "PRS0": {"f": "حساس الضغط بفلاتة الشحن معطل", "p": "فلاتة الشحن", "s": "استبدل فلاتة الشحن"},
     "MIC1": {"f": "الميكروفون السفلي معطل", "p": "فلاتة الشحن", "s": "استبدل فلاتة الشحن"},
@@ -54,7 +54,7 @@ def analyze(text):
         m = re.search(r"0X[0-9A-F]{2,6}", t)
         if m:
             return f"⚠️ كود غير معروف: `{m.group()}`\nتواصل مع المطور لإضافته."
-        return "❌ *فشل التحليل*\n\nلم يتم اكتشاف أكواد معروفة.\nتأكد من وضوح النص."
+        return "❌ *فشل التحليل*\n\nلم يتم اكتشاف أكواد معروفة.\nتأكد من وضوح النص أو الصورة."
         
     report = f"🔍 *نتيجة الفحص — {len(results)} عطل:*\n\n"
     for r in results:
@@ -66,11 +66,43 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
         "💎 *PincFull Pro Analyzer 24/7*\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        "البوت السريع! أرسل ملف `.ips` أو انسخ البانيك والصقه هنا.\n\n"
-        "🌐 *الموقع للتحليل الذكي للصور:* pincfull.web.app\n"
+        "أرسل **صورة** لسجل البانيك واستلم الحل بثواني! الميزة الذكية تعمل الآن بدون استهلاك الخادم.\n\n"
+        "أو أرسل ملف `.ips` أو انسخ البانيك والصقه هنا.\n\n"
+        "🌐 *موقع الويب:* pincfull.web.app\n"
         "👨‍💻 *Dev: kararAhmed*",
         parse_mode='Markdown'
     )
+
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    msg = await update.message.reply_text("📸 تم استلام الصورة... جاري الفحص عبر مساحة الـ Cloud...")
+    photo = update.message.photo[-1] # أعلى دقة
+    
+    try:
+        # الحصول على رابط الصورة من سيرفرات تيليجرام
+        file = await context.bot.get_file(photo.file_id)
+        file_path = file.file_path
+        
+        # إرسال الرابط إلى خدمة OCR السحابية (مجانية وسريعة)
+        api_url = f"https://api.ocr.space/parse/imageurl?apikey=helloworld&url={file_path}&language=eng"
+        response = requests.get(api_url).json()
+        
+        if response.get("IsErroredOnProcessing"):
+            await msg.edit_text("❌ لم أتمكن من قراءة الصورة بوضوح. أرسل صورة أوضح.")
+            return
+            
+        text = ""
+        for result in response.get("ParsedResults", []):
+            text += result.get("ParsedText", "") + " "
+            
+        if len(text.strip()) < 5:
+            await msg.edit_text("⚠️ لم يتم التعرف على أي نص! حاول التقاط الصورة من مسافة أقرب.")
+            return
+            
+        analysis = analyze(text)
+        await msg.edit_text(analysis, parse_mode='Markdown')
+        
+    except Exception as e:
+        await msg.edit_text(f"❌ خطأ أثناء الفحص: {e}")
 
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     document = update.message.document
@@ -98,11 +130,11 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 def main() -> None:
     application = Application.builder().token(BOT_TOKEN).build()
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text))
-    logging.info("PincFull Pro Polling Bot is running...")
+    logging.info("PincFull Pro Polling Bot is running with Cloud OCR...")
     
-    # حذف الـ Webhook القديم قبل بدء الـ Polling
     application.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
