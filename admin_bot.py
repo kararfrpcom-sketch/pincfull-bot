@@ -133,17 +133,9 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             await update.message.reply_text("❌ خطأ في التنسيق. يرجى الإرسال هكذا: `أحمد - 12345678`")
 
-def main():
-    app = Application.builder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(callback_handler))
-    app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'^[^-]+-[^-]+$'), handle_text))
-    app.add_handler(MessageHandler(filters.COMMAND & filters.Regex(r'^/manage_'), lambda u,c: callback_handler(u,c) if (u.callback_query := type('obj', (object,), {'data': u.message.text[1:], 'answer': lambda: None, 'edit_message_text': u.message.reply_text})) else None))
-    
 async def manage_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID: return
     
-    # Extract ID from /manage_12345
     parts = update.message.text.split("_")
     if len(parts) < 2: return
     tid = parts[1]
@@ -172,14 +164,10 @@ def main():
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(callback_handler))
-    
-    # Regex to catch /manage_12345678
     app.add_handler(MessageHandler(filters.Regex(r'^/manage_\d+$'), manage_cmd))
-    
-    # Text handler for adding users: Name - ID
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'^[^-]+-[^-]+$'), handle_text))
     
-    logging.info("Admin Pro Bot v18.1 is running...")
+    logging.info("Admin Pro Bot v18.4 is running...")
     app.run_polling()
 
 if __name__ == '__main__':
