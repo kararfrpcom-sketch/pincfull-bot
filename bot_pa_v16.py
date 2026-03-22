@@ -113,10 +113,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "💎 *PincFull Pro AI Diagnostics*\n"
             "━━━━━━━━━━━━━━━\n"
             "⚠️ هذا البوت مخصص للمشتركين المدفوعين فقط.\n\n"
-            f"👤 *معرفك الخاص:* `{user_id}`\n"
-            "👨‍💻 *للتفعيل تواصل مع المطور:* @Kguitaraa\n"
+            "للبدء، يرجى إرسال معرفك الخاص (ID) للمطور لتفعيل حسابك:\n\n"
+            f"👤 *معرفك الخاص:* `{user_id}`\n\n"
+            "👈 *اضغط على الرقم أعلاه لنسخه* ثم أرسله للمطور هنا: @Kguitaraa\n"
             "━━━━━━━━━━━━━━━\n"
-            "💡 إذا كان لديك كود تفعيل، أرسله الآن (مثال: `PINC-XXXX`)."
+            "💡 إذا قمت بشراء الكود مسبقاً، أرسله الآن لتفعيل الخدمة تلقائياً."
         )
         # Show ID to user to send to admin
         await update.message.reply_text(msg, parse_mode='Markdown')
