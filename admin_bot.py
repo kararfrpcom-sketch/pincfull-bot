@@ -74,8 +74,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     elif state == 'WAITING_NAME':
         try:
-            name = text.strip()
-            tid = context.user_data.get('temp_id')
+            name = html.escape(text.strip())
+            tid = html.escape(context.user_data.get('temp_id'))
             
             code = gen_code()
             start_date = datetime.datetime.now()
@@ -98,19 +98,20 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "code": code
             })
             
-            # Message
+            # Message (HTML MODE)
             msg = (
-                f"💎 *تم تفعيل اشتراكك في PincFull Pro الاستثنائي* 💎\n\n"
-                f"👤 *اسم المشترك:* `{name}`\n"
-                f"🆔 *معرف الدخول:* `{tid}`\n"
-                f"🔑 *كود التفعيل (بوت + موقع):*\n`{code}`\n\n"
-                f"📅 *تاريخ البدء:* `{start_date.strftime('%Y-%m-%d')}`\n"
-                f"⌛ *تاريخ الانتهاء:* `{end_date.strftime('%Y-%m-%d')}`\n\n"
-                f"🤖 *رابط البوت:* @panic2_bot\n"
-                f"🌐 *رابط الموقع:* https://pincfull.web.app"
+                f"💎 <b>تم تفعيل اشتراكك في PincFull Pro الاستثنائي</b> 💎\n\n"
+                f"👤 <b>اسم المشترك:</b> <code>{name}</code>\n"
+                f"🆔 <b>معرف الدخول:</b> <code>{tid}</code>\n"
+                f"🔑 <b>كود التفعيل (بوت + موقع):</b>\n<code>{code}</code>\n\n"
+                f"━━━━━━━━━━━━━━━\n"
+                f"📅 <b>تاريخ البدء:</b> <code>{start_date.strftime('%Y-%m-%d')}</code>\n"
+                f"⌛ <b>تاريخ الانتهاء:</b> <code>{end_date.strftime('%Y-%m-%d')}</code>\n\n"
+                f"🤖 <b>رابط البوت:</b> @panic2_bot\n"
+                f"🌐 <b>رابط الموقع:</b> https://pincfull.web.app"
             )
             await update.message.reply_text("✅ تم تسجيل المشترك بنجاح!")
-            await update.message.reply_text(msg, parse_mode='Markdown')
+            await update.message.reply_text(msg, parse_mode='HTML')
             context.user_data['state'] = None
         except Exception as e:
             await update.message.reply_text(f"❌ فشل التسجيل: {e}")
@@ -161,10 +162,10 @@ async def manage_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
             
         text = (
-            f"⚙️ *إدارة المشترك:* {user['name']}\n"
-            f"🆔 المعرف: `{tid}`\n"
-            f"الحالة: `{user.get('status', 'pending')}`\n"
-            f"📅 ينتهي: `{user.get('end_date', 'N/A')}`\n"
+            f"⚙️ <b>إدارة المشترك:</b> {user['name']}\n"
+            f"🆔 المعرف: <code>{tid}</code>\n"
+            f"الحالة: <code>{user.get('status', 'pending')}</code>\n"
+            f"📅 ينتهي: <code>{user.get('end_date', 'N/A')}</code>\n"
             f"━━━━━━━━━━━━━━"
         )
         keyboard = [
@@ -172,7 +173,7 @@ async def manage_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("♾️ دائم", callback_data=f"action_perm_{tid}"), InlineKeyboardButton("🚫 حظر", callback_data=f"action_block_{tid}")],
             [InlineKeyboardButton("🗑️ حذف نهائي", callback_data=f"action_stop_{tid}")]
         ]
-        await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
+        await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='HTML')
     except Exception as e:
         await update.message.reply_text(f"❌ خطأ: {e}")
 
