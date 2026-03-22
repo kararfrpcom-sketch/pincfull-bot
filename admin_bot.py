@@ -78,18 +78,20 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Prepare Package
         msg = (
-            f"💎 *تفاصيل اشتراكك في PincFull Pro:*\n"
+            f"💎 *تم تفعيل اشتراكك في PincFull Pro الاستثنائي* 💎\n\n"
+            f"👤 *اسم المشترك:* `{name}`\n"
+            f"🆔 *معرف الدخول:* `{tid}`\n"
+            f"🔑 *كود التفعيل (بوت + موقع):*\n`{code}`\n\n"
             f"━━━━━━━━━━━━━━━\n"
-            f"👤 *الاسم:* {name}\n"
-            f"🆔 *المعرف:* `{tid}`\n"
-            f"🔑 *كود التفعيل:*\n`{code}`\n\n"
-            f"📅 *تاريخ الانتهاء:* `{end_date.strftime('%Y-%m-%d')}`\n"
-            f"━━━━━━━━━━━━━━━\n"
-            f"الآن أرسل الكود لبوت الفحص لتفعيل الخدمة:\n"
-            f"👉 @panic2_bot\n\n"
-            f"💡 الكود يعمل على جهازك فقط."
+            f"📅 *تاريخ البدء:* `{start_date.strftime('%Y-%m-%d')}`\n"
+            f"⌛ *تاريخ الانتهاء:* `{end_date.strftime('%Y-%m-%d')}`\n"
+            f"⏰ *المدة المتبقية:* `30 يوم`\n"
+            f"━━━━━━━━━━━━━━━\n\n"
+            f"🤖 *رابط بوت الفحص:* @panic2_bot\n"
+            f"🌐 *رابط الموقع الرسمي:* https://pincfull.web.app\n\n"
+            f"💡 *ملاحظة:* الكود يعمل على جهازك فقط ولا يمكن مشاركته."
         )
-        await update.message.reply_text("✅ تم إنشاء المشترك بنجاح! إليك الرسالة لإرسالها له:")
+        await update.message.reply_text("✅ تم إنشاء المشترك بنجاح! إليك الرسالة الشاملة لإرسالها له:")
         await update.message.reply_text(msg, parse_mode='Markdown')
         context.user_data['state'] = None
         context.user_data['temp_id'] = None
