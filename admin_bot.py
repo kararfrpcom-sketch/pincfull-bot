@@ -48,18 +48,23 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not users:
                 await update.message.reply_text("📭 لا يوجد مشتركون حالياً.")
                 return
-            msg = "👥 <b>إدارة جميع المشتركين (v20.0):</b>\n\n"
+            
+            keyboard = []
             for uid, data in users.items():
                 st = data.get('status', 'active')
-                if st == "pending": icon = "⏳ قيد التفعيل"
-                elif st == "blocked": icon = "🚫 محظور"
-                else:
-                    expiry_str = data.get('end_date', '2020-01-01 00:00:00')
-                    expiry = datetime.datetime.strptime(expiry_str, "%Y-%m-%d %H:%M:%S")
-                    icon = "✅ نشط" if expiry > datetime.datetime.now() else "⌛ منتهي"
+                if st == "pending": icon = "⏳"
+                elif st == "blocked": icon = "🚫"
+                else: icon = "✅"
                 
-                msg += f"👤 <b>{data['name']}</b> (<code>{uid}</code>)\nالحالة: {icon}\nالتحكم: /manage_{uid}\n\n"
-            await update.message.reply_text(msg, parse_mode='HTML')
+                # Button for each user
+                btn_text = f"{icon} {data['name']} ({uid})"
+                keyboard.append([InlineKeyboardButton(btn_text, callback_data=f"open_manage_{uid}")])
+            
+            await update.message.reply_text(
+                "👥 <b>قائمة المشتركين (v21.0):</b>\nاضغط على اسم المشترك للتحكم به:", 
+                reply_markup=InlineKeyboardMarkup(keyboard), 
+                parse_mode='HTML'
+            )
         except Exception as e:
             await update.message.reply_text(f"❌ خطأ: {e}")
         return
@@ -154,7 +159,34 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     
-    if query.data.startswith("action_"):
+    if query.data.startswith("open_manage_"):
+        tid = query.data.split("_")[2]
+        user = requests.get(f"{DB_URL}/users/{tid}.json").json()
+        if not user:
+            await query.edit_message_text("❌ لم يتم العثور على المشترك.")
+            return
+        
+        text = (
+            f"⚙️ <b>إدارة المشترك:</b> {user['name']}\n"
+            f"🆔 المعرف: <code>{tid}</code>\n"
+            f"الحالة: <code>{user.get('status', 'pending')}</code>\n"
+            f"📅 ينتهي: <code>{user.get('end_date', 'N/A')}</code>\n"
+            f"━━━━━━━━━━━━━━"
+        )
+        keyboard = [
+            [InlineKeyboardButton("➕ تمديد 30 يوم", callback_data=f"action_ext_{tid}")],
+            [InlineKeyboardButton("♾️ اشتراك دائم", callback_data=f"action_perm_{tid}")],
+            [InlineKeyboardButton("🚫 حظر الزبون", callback_data=f"action_block_{tid}")],
+            [InlineKeyboardButton("🗑️ حذف البيانات", callback_data=f"action_stop_{tid}")],
+            [InlineKeyboardButton("⬅️ العودة للقائمة", callback_data="refresh_list")]
+        ]
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='HTML')
+
+    elif query.data == "refresh_list":
+        # Simply ask them to click the button again or reuse logic
+        await query.edit_message_text("📝 يرجى الضغط على زر (👥 المشتركين) في القائمة الرئيسية لتحديث البيانات.")
+
+    elif query.data.startswith("action_"):
         _, action, tid = query.data.split("_")
         await handle_user_action(query, action, tid)
 
