@@ -12,7 +12,8 @@ BOT_TOKEN = "8786102103:AAGiwHNQHid3nWjUgxV0TvYja4tpCAjf8FM"
 CHANNEL_USERNAME = "@Ai_pro26" # Admin channel for sub check
 INVITE_LINK = "https://t.me/+TnTEQjUhUfozOTMy"
 DB_URL = "https://pincfull-default-rtdb.firebaseio.com"
-ADMIN_ID = 123456789 # Placeholder - The dev's telegram ID for alerts
+ADMIN_ID = 8110196288957 # Placeholder - The user's ID
+# (User: replace with your actual ID from /start)
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
@@ -103,6 +104,27 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
     await update.message.reply_text(msg, parse_mode='Markdown', disable_web_page_preview=True)
 
+async def add_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id != ADMIN_ID:
+        await update.message.reply_text("❌ هذا الأمر للمطور فقط.")
+        return
+        
+    if not context.args:
+        await update.message.reply_text("💡 الاستخدام: `/addcode [اسم المشترك]`", parse_mode='Markdown')
+        return
+        
+    name = " ".join(context.args)
+    import string
+    import random
+    suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+    code = f"PINC-{suffix}"
+    
+    data = {"name": name, "duration_days": 30, "status": "unused", "created_at": str(datetime.datetime.now())}
+    requests.put(f"{DB_URL}/codes/{code}.json", json=data)
+    
+    await update.message.reply_text(f"✅ *تم إنشاء رمز جديد:*\n\n👤 *الاسم:* {name}\n🔑 *الرمز:* `{code}`\n⏳ *المدة:* 30 يوم", parse_mode='Markdown')
+
 async def handle_activation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     text = update.message.text.strip().upper()
@@ -164,6 +186,7 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("addcode", add_code))
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'^PINC-'), handle_activation))
     app.add_handler(MessageHandler(filters.PHOTO | filters.Document.ALL | (filters.TEXT & (~filters.COMMAND)), handle_media))
     logging.info("PincFull Pro Bot v16 SECURE is running...")
