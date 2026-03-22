@@ -94,6 +94,42 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['state'] = None
         context.user_data['temp_id'] = None
 
+async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    if query.data == "btn_list":
+        # Reuse logic
+        users = requests.get(f"{DB_URL}/users.json").json() or {}
+        if not users:
+            await query.edit_message_text("📭 لا يوجد مشتركون حالياً.")
+            return
+        msg = "👥 *قائمة المشتركين الحالية:*\n\n"
+        for uid, data in users.items():
+            status = "✅ نشط" if datetime.datetime.strptime(data['end_date'], "%Y-%m-%d %H:%M:%S") > datetime.datetime.now() else "⌛ منتهي"
+            msg += f"👤 *{data['name']}* ({uid})\n📅 ينتهي: `{data['end_date'].split(' ')[0]}`\n{status}\n/manage_{uid}\n\n"
+        await query.edit_message_text(msg, parse_mode='Markdown')
+
+    elif query.data.startswith("action_"):
+        _, action, tid = query.data.split("_")
+        await handle_user_action(query, action, tid)
+
+async def handle_user_action(query, action, tid):
+    user = requests.get(f"{DB_URL}/users/{tid}.json").json()
+    if not user: return
+    end_date = datetime.datetime.strptime(user['end_date'], "%Y-%m-%d %H:%M:%S")
+    
+    if action == "ext":
+        new_end = end_date + datetime.timedelta(days=30)
+        requests.patch(f"{DB_URL}/users/{tid}.json", json={"end_date": new_end.strftime("%Y-%m-%d %H:%M:%S")})
+        await query.edit_message_text(f"✅ تم تمديد اشتراك {user['name']} لمدة 30 يوم إضافية.")
+    elif action == "perm":
+        requests.patch(f"{DB_URL}/users/{tid}.json", json={"end_date": "2099-01-01 00:00:00"})
+        await query.edit_message_text(f"♾️ تم جعل اشتراك {user['name']} دائم (مدى الحياة).")
+    elif action == "stop":
+        requests.patch(f"{DB_URL}/users/{tid}.json", json={"end_date": "2020-01-01 00:00:00"})
+        await query.edit_message_text(f"🚫 تم إيقاف اشتراك {user['name']} فوراً.")
+
 async def manage_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID: return
     parts = update.message.text.split("_")
