@@ -102,10 +102,18 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     state = context.user_data.get('state')
     
     if state == 'WAITING_ADD':
+        text = update.message.text
+        # Support various dash types
+        sep = "-" if "-" in text else "—" if "—" in text else None
+        
+        if not sep or len(text.split(sep)) < 2:
+            await update.message.reply_text("⚠️ تنسيق غير صحيح. يرجى كتابة الاسم ثم شرطة ثم الايدي.\nمثال: `أحمد - 12345678`")
+            return
+            
         try:
-            name, tid = update.message.text.split("-")
-            name = name.strip()
-            tid = tid.strip()
+            parts = text.split(sep)
+            name = parts[0].strip()
+            tid = parts[1].strip()
             
             code = gen_code()
             start_date = datetime.datetime.now()
@@ -131,7 +139,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(msg, parse_mode='Markdown')
             context.user_data['state'] = None
         except Exception as e:
-            await update.message.reply_text("❌ خطأ في التنسيق. يرجى الإرسال هكذا: `أحمد - 12345678`")
+            await update.message.reply_text(f"❌ حدث خطأ أثناء المعالجة: {e}")
 
 async def manage_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID: return
@@ -165,7 +173,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(callback_handler))
     app.add_handler(MessageHandler(filters.Regex(r'^/manage_\d+$'), manage_cmd))
-    app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'^[^-]+-[^-]+$'), handle_text))
+    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text))
     
     logging.info("Admin Pro Bot v18.4 is running...")
     app.run_polling()
