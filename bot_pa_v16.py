@@ -12,7 +12,7 @@ BOT_TOKEN = "8786102103:AAGiwHNQHid3nWjUgxV0TvYja4tpCAjf8FM"
 CHANNEL_USERNAME = "@Ai_pro26" # Admin channel for sub check
 INVITE_LINK = "https://t.me/+TnTEQjUhUfozOTMy"
 DB_URL = "https://pincfull-default-rtdb.firebaseio.com"
-ADMIN_ID = 8110196288957 # Placeholder - Use /myid in bot to get yours
+ADMIN_ID = 5917515784 # Your official ID
 BOT_USERNAME = "@panic2_bot"
 CHANNEL_USERNAME = "@Ai_pro26"
 
