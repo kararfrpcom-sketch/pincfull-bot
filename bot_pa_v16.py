@@ -206,24 +206,30 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     try:
         if update.message.photo:
-            # OCR for Photo
+            # Download Photo for better OCR reliability
             photo_file = await update.message.photo[-1].get_file()
-            img_url = photo_file.file_path
+            img_path = "temp_ocr.jpg"
+            await photo_file.download_to_drive(img_path)
             
-            payload = {'apikey': OCR_API_KEY, 'url': img_url, 'OCREngine': '2'}
-            res = requests.post("https://api.ocr.space/parse/imageurl", data=payload, timeout=15)
+            with open(img_path, 'rb') as f:
+                payload = {'apikey': OCR_API_KEY, 'OCREngine': '2', 'isOverlayRequired': False}
+                files = {'file': f}
+                res = requests.post("https://api.ocr.space/parse/image", data=payload, files=files, timeout=20)
+            
+            # Clean up
+            if os.path.exists(img_path): os.remove(img_path)
+            
             dat = res.json()
             if dat.get("ParsedResults"):
                 extracted_text = dat["ParsedResults"][0]["ParsedText"]
             else:
-                await msg.edit_text("❌ فشلت قراءة الصورة. تأكد من وضوح الكود.")
+                await msg.edit_text("❌ فشلت قراءة الصورة. تأكد من جودة الصورة وأن الكود واضح.")
                 return
 
         elif update.message.document:
-            # Read Text File
+            # Read Text File directly from URL (Small files)
             doc_file = await update.message.document.get_file()
-            file_url = doc_file.file_path
-            res = requests.get(file_url, timeout=15)
+            res = requests.get(doc_file.file_path, timeout=15)
             extracted_text = res.text
 
         elif update.message.text:
@@ -231,6 +237,10 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Analyze
         final_text = (update.message.caption or "") + " " + extracted_text
+        if not extracted_text.strip() and not (update.message.caption or "").strip():
+             await msg.edit_text("⚠️ لم يتم العثور على أي نص في الصورة.")
+             return
+
         analysis = analyze(final_text)
         await msg.edit_text(analysis, parse_mode='Markdown')
 
