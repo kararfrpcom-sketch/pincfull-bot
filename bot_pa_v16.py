@@ -62,7 +62,13 @@ def analyze(text):
 
     # Return only the best single hit for 100% accuracy
     res = results[0]
-    return f"🔍 *تشخيص PincFull Pro (v16)*\n\n🔴 *العطل:* {res['f']}\n🔧 *القطعة التالفة:* {res['p']}\n✅ *الحل المقترح:* {res['s']}"
+    return (
+        f"📋 *نتائج فحص الجهاز ومشاكله*\n"
+        f"━━━━━━━━━━━━━━\n"
+        f"📍 *المكان:* {res['p']}\n"
+        f"💡 *الإجراء:* {res['s']}\n\n"
+        f"⚠️ *التشخيص:* {res['f']}"
+    )
 
 async def check_user_status(user_id) -> dict:
     """Returns user record if active, else None"""
@@ -121,37 +127,71 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
     await update.message.reply_text(msg, parse_mode='Markdown', disable_web_page_preview=True)
 
-async def add_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    if user_id != ADMIN_ID:
-        await update.message.reply_text(f"❌ هذا الأمر للمطور فقط.\n🆔 معرفك الحالي: `{user_id}`\n🔑 المعرف المطلوب: `{ADMIN_ID}`", parse_mode='Markdown')
-        return
-        
-    if not context.args:
-        await update.message.reply_text("💡 الاستخدام: `/addcode [اسم المشترك]`", parse_mode='Markdown')
-        return
-        
-    name = " ".join(context.args)
-    import string
-    import random
-    suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-    code = f"PINC-{suffix}"
     
-    data = {"name": name, "duration_days": 30, "status": "unused", "created_at": str(datetime.datetime.now())}
-    requests.put(f"{DB_URL}/codes/{code}.json", json=data)
+    # Admin Bypass
+    is_admin = (user_id == ADMIN_ID)
+    user_data = {"name": "ADMIN", "status": "active"} if is_admin else await check_user_status(user_id)
     
-    await update.message.reply_text(
-        f"💎 *تم إنشاء رمز اشتراك PincFull Pro:*\n\n"
-        f"👤 *المشترك:* `{name}`\n"
-        f"🔑 *كود التفعيل (اضغط للنسخ):*\n`{code}`\n\n"
-        f"📅 *الصلاحية:* 30 يوم\n"
-        "---------------------------\n"
-        "💡 أعطِ المشترك اسمه والرمز المسطر أعلاه.", 
-        parse_mode='Markdown'
-    )
+    if not is_admin and (not user_data or user_data.get("status") == "expired"):
+        await update.message.reply_text("🚫 لا تملك اشتراكاً فعالاً لشغل الجهاز. يرجى تزويد البوت بكود التفعيل أولاً.")
+        return
+
+    # Store message for callback
+    context.user_data['pending_msg'] = update.message
+    
+    # Show Model Selection
+    keyboard = [
+        [InlineKeyboardButton("iPhone X / XS / XR", callback_data="mod_x"), InlineKeyboardButton("iPhone 11 Series", callback_data="mod_11")],
+        [InlineKeyboardButton("iPhone 12 Series", callback_data="mod_12"), InlineKeyboardButton("iPhone 13 Series", callback_data="mod_13")],
+        [InlineKeyboardButton("iPhone 14 Series", callback_data="mod_14"), InlineKeyboardButton("iPhone 15 Series", callback_data="mod_15")],
+        [InlineKeyboardButton("iPhone 16 Series (Pro/Max)", callback_data="mod_16")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text("📱 *يرجى اختيار نوع الجهاز المراد فحصه:*", reply_markup=reply_markup, parse_mode='Markdown')
+
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    model_name = query.data.replace("mod_", "iPhone ")
+    msg = context.user_data.get('pending_msg')
+    if not msg: return
+
+    edit_msg = await query.edit_message_text(f"⏳ *جاري فحص جهاز {model_name} ومشاكله بعناية...*", parse_mode='Markdown')
+    
+    extracted_text = ""
+    try:
+        if msg.photo:
+            photo_file = await msg.photo[-1].get_file()
+            img_path = "temp_scan.jpg"
+            await photo_file.download_to_drive(img_path)
+            with open(img_path, 'rb') as f:
+                res = requests.post("https://api.ocr.space/parse/image", data={'apikey': OCR_API_KEY, 'OCREngine': '2'}, files={'file': f}, timeout=20)
+            if os.path.exists(img_path): os.remove(img_path)
+            dat = res.json()
+            extracted_text = dat["ParsedResults"][0]["ParsedText"] if dat.get("ParsedResults") else ""
+        elif msg.document:
+            doc_file = await msg.document.get_file()
+            res = requests.get(doc_file.file_path, timeout=15)
+            extracted_text = res.text
+        elif msg.text:
+            extracted_text = msg.text
+
+        final_text = (msg.caption or "") + " " + extracted_text
+        if not extracted_text.strip():
+            await edit_msg.edit_text("⚠️ لم يتم العثور على بيانات واضحة للفحص. تأكد من وضوح الملف.")
+            return
+
+        analysis = analyze(final_text)
+        await edit_msg.edit_text(f"📱 *الجهاز المختبر:* {model_name}\n\n{analysis}", parse_mode='Markdown')
+
+    except Exception as e:
+        await edit_msg.edit_text("❌ حدث خطأ تقني أثناء الفحص. حاول مجدداً بنسخة نصية.")
 
 async def get_my_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(f"🆔 معرفك الخاص هو: `{update.effective_user.id}`", parse_mode='Markdown')
+    await update.message.reply_text(f"🆔 معرفك الخاص للفحص هو: `{update.effective_user.id}`", parse_mode='Markdown')
 
 async def handle_activation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -251,11 +291,11 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("addcode", add_code))
     app.add_handler(CommandHandler("myid", get_my_id))
+    app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'^PINC-'), handle_activation))
     app.add_handler(MessageHandler(filters.PHOTO | filters.Document.ALL | (filters.TEXT & (~filters.COMMAND)), handle_media))
-    logging.info("PincFull Pro Bot v16 SECURE is running...")
+    logging.info("PincFull Pro Diagnostic Bot is running...")
     app.run_polling()
 
 if __name__ == '__main__':
