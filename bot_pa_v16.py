@@ -87,7 +87,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # 2. Check Activation
     user_data = await check_user_status(user_id)
     if not user_data:
-        await update.message.reply_text("🔑 *أهلاً بك في PincFull Pro v16*\n\nهذا البوت يعمل بنظام الاشتراك الخاص.\nيرجى إدخال *رمز التفعيل* الممنوح لك من المطور لتفعيل حسابك لمد 30 يوم.")
+        msg = (
+            "⚠️ *أهلاً بك في PincFull Pro v16*\n\n"
+            "هذا البوت مخصص للمشتركين فقط. لتفعيل حسابك، يرجى اتباع الخطوات:\n"
+            f"1️⃣ اشترك في القناة أولاً: {INVITE_LINK}\n"
+            "2️⃣ تواصل مع المطور لشراء كود التفعيل: @kararAhmed\n"
+            f"3️⃣ أرسل للمطور معرفك الخاص: `{user_id}`\n\n"
+            "بمجرد الحصول على الكود، أرسله هنا لتفعيل اشتراكك لمدة 30 يوم."
+        )
+        await update.message.reply_text(msg, parse_mode='Markdown')
         return
     
     if user_data.get("status") == "expired":
@@ -124,6 +132,9 @@ async def add_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     requests.put(f"{DB_URL}/codes/{code}.json", json=data)
     
     await update.message.reply_text(f"✅ *تم إنشاء رمز جديد:*\n\n👤 *الاسم:* {name}\n🔑 *الرمز:* `{code}`\n⏳ *المدة:* 30 يوم", parse_mode='Markdown')
+
+async def get_my_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(f"🆔 معرفك الخاص هو: `{update.effective_user.id}`", parse_mode='Markdown')
 
 async def handle_activation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -187,6 +198,7 @@ def main():
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("addcode", add_code))
+    app.add_handler(CommandHandler("myid", get_my_id))
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'^PINC-'), handle_activation))
     app.add_handler(MessageHandler(filters.PHOTO | filters.Document.ALL | (filters.TEXT & (~filters.COMMAND)), handle_media))
     logging.info("PincFull Pro Bot v16 SECURE is running...")
