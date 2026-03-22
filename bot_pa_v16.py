@@ -91,8 +91,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "⚠️ *أهلاً بك في PincFull Pro v16*\n\n"
             "هذا البوت مخصص للمشتركين فقط. لتفعيل حسابك، يرجى اتباع الخطوات:\n"
             f"1️⃣ اشترك في القناة أولاً: {INVITE_LINK}\n"
-            "2️⃣ تواصل مع المطور لشراء كود التفعيل: @kararAhmed\n"
-            f"3️⃣ أرسل للمطور معرفك الخاص: `{user_id}`\n\n"
+            "2️⃣ تواصل معي لشراء كود التفعيل: @Kguitaraa\n"
+            f"3️⃣ أرسل لي معرفك الخاص: `{user_id}`\n\n"
             "بمجرد الحصول على الكود، أرسله هنا لتفعيل اشتراكك لمدة 30 يوم."
         )
         await update.message.reply_text(msg, parse_mode='Markdown')
