@@ -174,7 +174,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = context.user_data.get('pending_msg')
     if not msg: return
 
-    edit_msg = await query.edit_message_text(f"⏳ *جاري فحص جهاز {model_name} ومشاكله بعناية...*", parse_mode='Markdown')
+    edit_msg = await query.edit_message_text(f"⏳ *جاري تشخيص سجلات جهاز {model_name} بدقة...*", parse_mode='Markdown')
     
     extracted_text = ""
     try:
@@ -200,7 +200,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         analysis = analyze(final_text)
-        await edit_msg.edit_text(f"📱 *الجهاز المختبر:* {model_name}\n\n{analysis}", parse_mode='Markdown')
+        await edit_msg.edit_text(f"📱 *الجهاز المختبر:* {model_name}\n\n{analysis}", parse_mode='HTML')
 
     except Exception as e:
         await edit_msg.edit_text("❌ حدث خطأ تقني أثناء الفحص. حاول مجدداً بنسخة نصية.")
@@ -249,69 +249,6 @@ async def handle_activation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     requests.patch(f"{DB_URL}/codes/{text}.json", json={"status": "used", "registered_to": user_id})
     
     await update.message.reply_text("🎉 *تم تفعيل اشتراكك بنجاح لمدة 30 يوم هاردوير!*")
-
-async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    # Admin Bypass
-    if user_id == ADMIN_ID:
-        user_data = {"name": "ADMIN (Master)", "status": "active"}
-    else:
-        user_data = await check_user_status(user_id)
-        if not user_data or user_data.get("status") == "expired":
-            await update.message.reply_text("🚫 لا تملك اشتراكاً فعالاً. أرسل رمز التفعيل أولاً.")
-            return
-
-    msg = await update.message.reply_text("⏳ جاري التحليل بالذكاء الصناعي...")
-    
-    extracted_text = ""
-    
-    try:
-        if update.message.photo:
-            # Download Photo for better OCR reliability
-            photo_file = await update.message.photo[-1].get_file()
-            img_path = "temp_ocr.jpg"
-            await photo_file.download_to_drive(img_path)
-            
-            with open(img_path, 'rb') as f:
-                payload = {'apikey': OCR_API_KEY, 'OCREngine': '2', 'isOverlayRequired': False}
-                files = {'file': f}
-                res = requests.post("https://api.ocr.space/parse/image", data=payload, files=files, timeout=20)
-            
-            # Clean up
-            if os.path.exists(img_path): os.remove(img_path)
-            
-            dat = res.json()
-            if dat.get("ParsedResults"):
-                extracted_text = dat["ParsedResults"][0]["ParsedText"]
-            else:
-                await msg.edit_text("❌ فشلت قراءة الصورة. تأكد من جودة الصورة وأن الكود واضح.")
-                return
-
-        elif update.message.document:
-            # Read Text File directly from URL (Small files)
-            doc_file = await update.message.document.get_file()
-            res = requests.get(doc_file.file_path, timeout=15)
-            extracted_text = res.text
-
-        elif update.message.text:
-            extracted_text = update.message.text
-
-        # Analyze
-        final_text = (update.message.caption or "") + " " + extracted_text
-        if not extracted_text.strip() and not (update.message.caption or "").strip():
-             await msg.edit_text("⚠️ لم يتم العثور على أي نص في الصورة.")
-             return
-
-        analysis = analyze(final_text)
-        # The instruction asks to ensure parse_mode is consistent.
-        # The original code uses 'Markdown' for the final analysis.
-        # The provided snippet suggests 'HTML'. Sticking to 'Markdown' for consistency
-        # with the rest of the file and the original analysis output.
-        await msg.edit_text(analysis, parse_mode='Markdown')
-
-    except Exception as e:
-        logging.error(f"Media Error: {e}")
-        await msg.edit_text("❌ حدث خطأ أثناء التحليل. حاول مرة أخرى.")
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
