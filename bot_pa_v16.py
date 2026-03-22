@@ -116,7 +116,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def add_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id != ADMIN_ID:
-        await update.message.reply_text("❌ هذا الأمر للمطور فقط.")
+        await update.message.reply_text(f"❌ هذا الأمر للمطور فقط.\n🆔 معرفك الحالي: `{user_id}`\n🔑 المعرف المطلوب: `{ADMIN_ID}`", parse_mode='Markdown')
         return
         
     if not context.args:
