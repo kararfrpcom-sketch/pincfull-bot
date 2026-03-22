@@ -185,10 +185,14 @@ async def handle_activation(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    user_data = await check_user_status(user_id)
-    if not user_data or user_data.get("status") == "expired":
-        await update.message.reply_text("🚫 لا تملك اشتراكاً فعالاً. أرسل رمز التفعيل أولاً.")
-        return
+    # Admin Bypass
+    if user_id == ADMIN_ID:
+        user_data = {"name": "ADMIN (Master)", "status": "active"}
+    else:
+        user_data = await check_user_status(user_id)
+        if not user_data or user_data.get("status") == "expired":
+            await update.message.reply_text("🚫 لا تملك اشتراكاً فعالاً. أرسل رمز التفعيل أولاً.")
+            return
 
     msg = await update.message.reply_text("⏳ جاري التحليل بالذكاء الصناعي...")
     
