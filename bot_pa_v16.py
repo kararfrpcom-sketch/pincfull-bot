@@ -224,10 +224,15 @@ async def handle_activation(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ رمز التفعيل غير صحيح.")
         return
         
+    # Security: Check Pre-Locking
+    if code_info.get("target_id") and str(code_info["target_id"]) != str(user_id):
+        await update.message.reply_text("⚠️ هذا الكود مخصص لجهاز آخر فقط! لا يمكنك استخدامه.")
+        # Alert Admin
+        requests.post(f"{DB_URL}/alerts.json", json={"user_id": user_id, "code": text, "type": "id_mismatch_attempt", "owner": code_info["target_id"]})
+        return
+
     if code_info.get("status") != "unused":
-        # Alert Admin about potential fraud
-        requests.post(f"{DB_URL}/alerts.json", json={"user_id": user_id, "code": text, "type": "shared_code_attempt"})
-        await update.message.reply_text("⚠️ هذا الرمز قيد الاستخدام من قبل جهاز آخر! تم إرسال تنبيه للمطور.")
+        await update.message.reply_text("⚠️ هذا الرمز تم استخدامه مسبقاً.")
         return
 
     # Activate User
@@ -236,17 +241,18 @@ async def handle_activation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     user_record = {
         "name": code_info['name'],
+        "status": "active",
         "code": text,
         "start_date": start_date.strftime("%Y-%m-%d %H:%M:%S"),
         "end_date": end_date.strftime("%Y-%m-%d %H:%M:%S"),
-        "device_id": str(user_id) # Locked to this Telegram ID
+        "device_id": str(user_id) 
     }
     
     # Save user, mark code as used
     requests.put(f"{DB_URL}/users/{user_id}.json", json=user_record)
     requests.patch(f"{DB_URL}/codes/{text}.json", json={"status": "used", "registered_to": user_id})
     
-    await update.message.reply_text("🎉 *تم تفعيل اشتراكك بنجاح لمدة 30 يوم!*\nاستخدم /start لعرض التفاصيل.")
+    await update.message.reply_text("🎉 *تم تفعيل اشتراكك بنجاح لمدة 30 يوم هاردوير!*")
 
 async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
