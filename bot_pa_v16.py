@@ -15,6 +15,7 @@ DB_URL = "https://pincfull-default-rtdb.firebaseio.com"
 ADMIN_ID = 5917515784 # Your official ID
 BOT_USERNAME = "@panic2_bot"
 CHANNEL_USERNAME = "@Ai_pro26"
+OCR_API_KEY = "K82110196288957"
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
@@ -201,18 +202,41 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     msg = await update.message.reply_text("⏳ جاري التحليل بالذكاء الصناعي...")
     
-    # Simulate OCR for text/doc (Simplified for this script)
-    text = ""
-    if update.message.photo:
-        photo = update.message.photo[-1]
-        file = await context.bot.get_file(photo.file_id)
-        # In real bot, use OCR.space here
-    elif update.message.document:
-        doc = update.message.document
-        file = await context.bot.get_file(doc.file_id)
-        
-    analysis = analyze(update.message.caption or update.message.text or "")
-    await msg.edit_text(analysis, parse_mode='Markdown')
+    extracted_text = ""
+    
+    try:
+        if update.message.photo:
+            # OCR for Photo
+            photo_file = await update.message.photo[-1].get_file()
+            img_url = photo_file.file_path
+            
+            payload = {'apikey': OCR_API_KEY, 'url': img_url, 'OCREngine': '2'}
+            res = requests.post("https://api.ocr.space/parse/imageurl", data=payload, timeout=15)
+            dat = res.json()
+            if dat.get("ParsedResults"):
+                extracted_text = dat["ParsedResults"][0]["ParsedText"]
+            else:
+                await msg.edit_text("❌ فشلت قراءة الصورة. تأكد من وضوح الكود.")
+                return
+
+        elif update.message.document:
+            # Read Text File
+            doc_file = await update.message.document.get_file()
+            file_url = doc_file.file_path
+            res = requests.get(file_url, timeout=15)
+            extracted_text = res.text
+
+        elif update.message.text:
+            extracted_text = update.message.text
+
+        # Analyze
+        final_text = (update.message.caption or "") + " " + extracted_text
+        analysis = analyze(final_text)
+        await msg.edit_text(analysis, parse_mode='Markdown')
+
+    except Exception as e:
+        logging.error(f"Media Error: {e}")
+        await msg.edit_text("❌ حدث خطأ أثناء التحليل. حاول مرة أخرى.")
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
