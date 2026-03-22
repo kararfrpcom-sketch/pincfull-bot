@@ -12,8 +12,9 @@ BOT_TOKEN = "8786102103:AAGiwHNQHid3nWjUgxV0TvYja4tpCAjf8FM"
 CHANNEL_USERNAME = "@Ai_pro26" # Admin channel for sub check
 INVITE_LINK = "https://t.me/+TnTEQjUhUfozOTMy"
 DB_URL = "https://pincfull-default-rtdb.firebaseio.com"
-ADMIN_ID = 8110196288957 # Placeholder - The user's ID
-# (User: replace with your actual ID from /start)
+ADMIN_ID = 8110196288957 # Placeholder - Use /myid in bot to get yours
+BOT_USERNAME = "@panic2_bot"
+CHANNEL_USERNAME = "@Ai_pro26"
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
@@ -90,10 +91,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         msg = (
             "⚠️ *أهلاً بك في PincFull Pro v16*\n\n"
             "هذا البوت مخصص للمشتركين فقط. لتفعيل حسابك، يرجى اتباع الخطوات:\n"
-            f"1️⃣ اشترك في القناة أولاً: {INVITE_LINK}\n"
+            f"1️⃣ اشترك في القناة: {INVITE_LINK}\n"
             "2️⃣ تواصل معي لشراء كود التفعيل: @Kguitaraa\n"
             f"3️⃣ أرسل لي معرفك الخاص: `{user_id}`\n\n"
-            "بمجرد الحصول على الكود، أرسله هنا لتفعيل اشتراكك لمدة 30 يوم."
+            "⚠️ *ملاحظة:* إذا قمت بشراء الكود، أرسله هنا فوراً بالتنسيق `PINC-XXXX`"
         )
         await update.message.reply_text(msg, parse_mode='Markdown')
         return
