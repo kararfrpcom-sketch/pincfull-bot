@@ -44,15 +44,20 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     elif text == "👥 المشتركين":
-        # Reuse logic from list button
         users = requests.get(f"{DB_URL}/users.json").json() or {}
         if not users:
             await update.message.reply_text("📭 لا يوجد مشتركون حالياً.")
             return
-        msg = "👥 *قائمة المشتركين الحالية:*\n\n"
+        msg = "👥 *إدارة جميع المشتركين (v19.0):*\n\n"
         for uid, data in users.items():
-            status = "✅ نشط" if datetime.datetime.strptime(data['end_date'], "%Y-%m-%d %H:%M:%S") > datetime.datetime.now() else "⌛ منتهي"
-            msg += f"👤 *{data['name']}* ({uid})\n📅 ينتهي: `{data['end_date'].split(' ')[0]}`\n{status}\n/manage_{uid}\n\n"
+            st = data.get('status', 'active')
+            if st == "pending": icon = "⏳ قيد التفعيل"
+            elif st == "blocked": icon = "🚫 محظور"
+            else:
+                expiry = datetime.datetime.strptime(data['end_date'], "%Y-%m-%d %H:%M:%S")
+                icon = "✅ نشط" if expiry > datetime.datetime.now() else "⌛ منتهي"
+            
+            msg += f"👤 *{data['name']}* (`{uid}`)\nالحالة: {icon}\nالتحكم: /manage_{uid}\n\n"
         await update.message.reply_text(msg, parse_mode='Markdown')
         return
 
@@ -73,8 +78,22 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         start_date = datetime.datetime.now()
         end_date = start_date + datetime.timedelta(days=30)
         
-        # Save Code to DB
-        requests.put(f"{DB_URL}/codes/{code}.json", json={"name": name, "status": "unused", "created_at": str(start_date)})
+        # 1. Save Pre-Locked Code
+        requests.put(f"{DB_URL}/codes/{code}.json", json={
+            "name": name, 
+            "status": "unused", 
+            "target_id": tid, # LOCKING
+            "created_at": str(start_date)
+        })
+        
+        # 2. Create Immediate User Record (CRM Visibility)
+        requests.put(f"{DB_URL}/users/{tid}.json", json={
+            "name": name,
+            "status": "pending",
+            "start_date": str(start_date),
+            "end_date": str(end_date), # Estimated
+            "code": code
+        })
         
         # Prepare Package
         msg = (
@@ -91,7 +110,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🌐 *رابط الموقع الرسمي:* https://pincfull.web.app\n\n"
             f"💡 *ملاحظة:* الكود يعمل على جهازك فقط ولا يمكن مشاركته."
         )
-        await update.message.reply_text("✅ تم إنشاء المشترك بنجاح! إليك الرسالة الشاملة لإرسالها له:")
+        await update.message.reply_text("✅ تم إنشاء المشترك بنجاح في النظام (قيد التفعيل). إليك الرسالة:")
         await update.message.reply_text(msg, parse_mode='Markdown')
         context.user_data['state'] = None
         context.user_data['temp_id'] = None
@@ -141,13 +160,42 @@ async def manage_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not user:
         await update.message.reply_text("❌ لم يتم العثور على المشترك.")
         return
-    text = f"👤 *إدارة المشترك:* {user['name']}\n🆔 المعرف: `{tid}`\n📅 الانتهاء: `{user['end_date']}`\n━━━━━━━━━━━━━━"
+    text = (
+        f"⚙️ *إدارة المشترك:* {user['name']}\n"
+        f"🆔 المعرف: `{tid}`\n"
+        f"الحالة: `{user.get('status', 'active')}`\n"
+        f"📅 الانتهاء: `{user['end_date']}`\n"
+        f"━━━━━━━━━━━━━━"
+    )
     keyboard = [
         [InlineKeyboardButton("➕ تمديد 30 يوم", callback_data=f"action_ext_{tid}")],
         [InlineKeyboardButton("♾️ جعل الاشتراك دائم", callback_data=f"action_perm_{tid}")],
-        [InlineKeyboardButton("🚫 إيقاف الاشتراك", callback_data=f"action_stop_{tid}")]
+        [InlineKeyboardButton("🚫 حظر هذا المستخدم", callback_data=f"action_block_{tid}")],
+        [InlineKeyboardButton("🗑️ حذف الاشتراك", callback_data=f"action_stop_{tid}")]
     ]
     await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='Markdown')
+
+# Add handle_user_action with block logic
+async def handle_user_action(query, action, tid):
+    user = requests.get(f"{DB_URL}/users/{tid}.json").json()
+    if not user: return
+    
+    if action == "block":
+        requests.patch(f"{DB_URL}/users/{tid}.json", json={"status": "blocked"})
+        await query.edit_message_text(f"🚫 تم حظر `{user['name']}` بنجاح.")
+        return
+
+    end_date = datetime.datetime.strptime(user['end_date'], "%Y-%m-%d %H:%M:%S")
+    if action == "ext":
+        new_end = end_date + datetime.timedelta(days=30)
+        requests.patch(f"{DB_URL}/users/{tid}.json", json={"end_date": new_end.strftime("%Y-%m-%d %H:%M:%S"), "status": "active"})
+        await query.edit_message_text(f"✅ تم تمديد `{user['name']}` لـ 30 يوم إضافية.")
+    elif action == "perm":
+        requests.patch(f"{DB_URL}/users/{tid}.json", json={"end_date": "2099-01-01 00:00:00", "status": "active"})
+        await query.edit_message_text(f"♾️ تم جعل اشتراك `{user['name']}` دائم.")
+    elif action == "stop":
+        requests.delete(f"{DB_URL}/users/{tid}.json")
+        await query.edit_message_text(f"🗑️ تم حذف بيانات `{user['name']}` بالكامل.")
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
