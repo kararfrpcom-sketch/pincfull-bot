@@ -26,8 +26,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     keyboard = [
         [KeyboardButton("➕ إضافة مشترك"), KeyboardButton("👥 المشتركين")],
-        [KeyboardButton("🔍 بحث عن مشترك")]
+        [KeyboardButton("🔍 بحث عن مشترك"), KeyboardButton("🔔 التنبيهات")]
     ]
+...
+    elif text == "🔔 التنبيهات":
+        try:
+            alerts = requests.get(f"{DB_URL}/web_alerts.json").json() or {}
+            if not alerts:
+                await update.message.reply_text("📭 لا يوجد تنبيهات تفعيل حالياً.")
+                return
+            msg = "🔔 <b>تنبيهات الدخول للموقع:</b>\n\n"
+            # Show last 5
+            sorted_alerts = list(alerts.values())[-5:]
+            for al in reversed(sorted_alerts):
+                msg += f"👤 {al['user']} (<code>{al['id']}</code>)\n⏰ الوقت: {al['time'].split('.')[0]}\n\n"
+            await update.message.reply_text(msg, parse_mode='HTML')
+        except Exception as e:
+            await update.message.reply_text(f"❌ خطأ: {e}")
+        return
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text("👋 أهلاً بك سيدي المدير في لوحة تحكم PincFull Pro.\nاستخدم الأزرار أدناه للتحكم:", reply_markup=reply_markup)
 
