@@ -94,20 +94,31 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     
     # 1. Check Mandatory Sub
     if not await is_member(update, context):
-        await update.message.reply_text(f"🚫 *يجب الاشتراك في القناة أولاً:*\n{INVITE_LINK}\n\nبعد الاشتراك، اضغط /start", parse_mode='Markdown')
+        keyboard = [
+            [InlineKeyboardButton("📢 اشترك في القناة أولاً", url=INVITE_LINK)],
+            [InlineKeyboardButton("🔄 تم الاشتراك (تحديث)", callback_data="check_sub")]
+        ]
+        await update.message.reply_text(
+            f"🚫 *عذراً، يجب الانضمام لقناتنا أولاً لاستخدام البوت:*\n\n"
+            f"يرجى الانضمام ثم الضغط على زر (تم الاشتراك) أو إرسال /start مجدداً.",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='Markdown'
+        )
         return
 
     # 2. Check Activation
     user_data = await check_user_status(user_id)
     if not user_data:
         msg = (
-            "⚠️ *أهلاً بك في PincFull Pro v16*\n\n"
-            "هذا البوت مخصص للمشتركين فقط. لتفعيل حسابك، يرجى اتباع الخطوات:\n"
-            f"1️⃣ اشترك في القناة: {INVITE_LINK}\n"
-            "2️⃣ تواصل معي لشراء كود التفعيل: @Kguitaraa\n"
-            f"3️⃣ أرسل لي معرفك الخاص: `{user_id}`\n\n"
-            "⚠️ *ملاحظة:* إذا قمت بشراء الكود، أرسله هنا فوراً بالتنسيق `PINC-XXXX`"
+            "💎 *PincFull Pro AI Diagnostics*\n"
+            "━━━━━━━━━━━━━━━\n"
+            "⚠️ هذا البوت مخصص للمشتركين المدفوعين فقط.\n\n"
+            f"👤 *معرفك الخاص:* `{user_id}`\n"
+            "👨‍💻 *للتفعيل تواصل مع المطور:* @Kguitaraa\n"
+            "━━━━━━━━━━━━━━━\n"
+            "💡 إذا كان لديك كود تفعيل، أرسله الآن (مثال: `PINC-XXXX`)."
         )
+        # Show ID to user to send to admin
         await update.message.reply_text(msg, parse_mode='Markdown')
         return
     
@@ -155,6 +166,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     
+    if query.data == "check_sub":
+        if await is_member(update, context):
+            await query.edit_message_text("✅ تم التحقق من الاشتراك بنجاح! أرسل /start لبدء استخدام البوت.")
+        else:
+            await query.answer("❌ لم تشترك في القناة بعد!", show_alert=True)
+        return
+
     model_name = query.data.replace("mod_", "iPhone ")
     msg = context.user_data.get('pending_msg')
     if not msg: return
