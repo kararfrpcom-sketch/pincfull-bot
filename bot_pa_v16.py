@@ -105,11 +105,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     # User is active
     msg = (
-        f"✅ *مرحباً بك: {user_data['name']}*\n"
-        f"📅 *تاريخ البدء:* `{user_data['start_date']}`\n"
-        f"⌛ *تاريخ الانتهاء:* `{user_data['end_date']}`\n\n"
-        "🌐 *رابط الموقع:* [pincfull.web.app](https://pincfull.web.app)\n\n"
-        "يمكنك الآن إرسال صورة المخطط أو ملف Panic Log للفحص!"
+        f"💎 *PincFull Pro AI Suite*\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"👤 *المشترك:* `{user_data['name']}`\n"
+        f"📅 *البداية:* `{user_data['start_date'].split(' ')[0]}`\n"
+        f"⌛ *النهاية:* `{user_data['end_date'].split(' ')[0]}`\n"
+        f"━━━━━━━━━━━━━━━\n\n"
+        "📱 *جاهز للفحص:* أرسل صورة المخطط أو ملف Panic Log الآن."
     )
     await update.message.reply_text(msg, parse_mode='Markdown', disable_web_page_preview=True)
 
@@ -132,7 +134,15 @@ async def add_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = {"name": name, "duration_days": 30, "status": "unused", "created_at": str(datetime.datetime.now())}
     requests.put(f"{DB_URL}/codes/{code}.json", json=data)
     
-    await update.message.reply_text(f"✅ *تم إنشاء رمز جديد:*\n\n👤 *الاسم:* {name}\n🔑 *الرمز:* `{code}`\n⏳ *المدة:* 30 يوم", parse_mode='Markdown')
+    await update.message.reply_text(
+        f"💎 *تم إنشاء رمز اشتراك PincFull Pro:*\n\n"
+        f"👤 *المشترك:* `{name}`\n"
+        f"🔑 *كود التفعيل (اضغط للنسخ):*\n`{code}`\n\n"
+        f"📅 *الصلاحية:* 30 يوم\n"
+        "---------------------------\n"
+        "💡 أعطِ المشترك اسمه والرمز المسطر أعلاه.", 
+        parse_mode='Markdown'
+    )
 
 async def get_my_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🆔 معرفك الخاص هو: `{update.effective_user.id}`", parse_mode='Markdown')
