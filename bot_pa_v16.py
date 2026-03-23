@@ -241,7 +241,8 @@ async def handle_activation(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "code": text,
         "start_date": start_date.strftime("%Y-%m-%d %H:%M:%S"),
         "end_date": end_date.strftime("%Y-%m-%d %H:%M:%S"),
-        "device_id": str(user_id) 
+        "telegram_id": str(user_id),
+        "device_id": str(user_id) # Initial lock to telegram
     }
     
     # Save user, mark code as used
